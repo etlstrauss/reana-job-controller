@@ -71,7 +71,6 @@ from reana_job_controller.config import (
     KUEUE_ENABLED,
     KUEUE_LOCAL_QUEUE_NAME,
     REANA_DATASTORE_ENABLED,
-    REANA_DATASTORE_SECRET,
     REANA_DATASTORE_IMAGE,
 )
 from reana_job_controller.errors import ComputingBackendSubmissionError
@@ -436,7 +435,6 @@ class KubernetesJobManager(JobManager):
         self.add_workspace_volume()
         self.add_shared_volume()
         self.add_eos_volume()
-        self.add_image_pull_secrets()
         self.add_kubernetes_job_timeout()
 
         if self.cvmfs_mounts != "false":
@@ -675,17 +673,6 @@ class KubernetesJobManager(JobManager):
                     )
                 ]
             )
-
-    def add_image_pull_secrets(self):
-        """Attach to the container the configured image pull secrets."""
-        image_pull_secrets = []
-        for secret_name in current_app.config["IMAGE_PULL_SECRETS"]:
-            if secret_name:
-                image_pull_secrets.append({"name": secret_name})
-        if REANA_DATASTORE_ENABLED and REANA_DATASTORE_SECRET != "":
-            image_pull_secrets.append({"name": REANA_DATASTORE_SECRET})
-
-        self.job["spec"]["template"]["spec"]["imagePullSecrets"] = image_pull_secrets
 
     def validate_resources(self):
         """Validate that resource requests are less than or equal to limits."""

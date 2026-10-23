@@ -322,8 +322,5 @@ if REANA_DATASTORE_ENABLED:
     REANA_DATASTORE_IMAGE = os.getenv("REANA_DATASTORE_IMAGE")
     """Optional Image for datastore (s3) sidecar for interactive sessions"""
 
-    REANA_DATASTORE_SECRET = os.getenv("REANA_DATASTORE_SECRET")
-    """Optional secret for datastore (s3) sidecar for interactive sessions"""
 else:
     REANA_DATASTORE_IMAGE = ""
-    REANA_DATASTORE_SECRET = ""

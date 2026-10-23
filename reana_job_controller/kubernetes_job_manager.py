@@ -106,7 +106,7 @@ def _restricted_container_security_context(
 ) -> dict:
     """Return a PSA-restricted container security context."""
     security_context = {
-        "runAsNonRoot": True,
+        "runAsNonRoot": False,
         "allowPrivilegeEscalation": False,
         "capabilities": {"drop": ["ALL"]},
         "seccompProfile": {"type": "RuntimeDefault"},
@@ -353,37 +353,43 @@ class KubernetesJobManager(JobManager):
                                 ],
                                 "securityContext": {"allowPrivilegeEscalation": False},
                             },
-                            *(
-                                [
-                                    {
-                                        "image": REANA_DATASTORE_IMAGE,
-                                        "name": "datastore",
-                                        "env": s3_env,
-                                        "volumeMounts": [
-                                            {
-                                                "name": "fuse-device",
-                                                "mountPath": "/dev/fuse",
-                                            },
-                                            {
-                                                "name": "s3-mounts",
-                                                "mountPath": "/s3-data",
-                                                "mountPropagation": "Bidirectional",
-                                            },
-                                        ],
-                                        "securityContext": {
-                                            "runAsUser": 0,
-                                            "allowPrivilegeEscalation": True,
-                                            "capabilities": {"add": ["SYS_ADMIN"]},
-                                            "privileged": True,
-                                        },
-                                        "imagePullPolicy": "Always",
-                                    }
-                                ]
-                                if REANA_DATASTORE_ENABLED and datastore_enabled
-                                else []
-                            ),
                         ],
-                        "initContainers": [],
+                        "initContainers": (
+                            [
+                                {
+                                    "image": REANA_DATASTORE_IMAGE,
+                                    "name": "datastore",
+                                    "restartPolicy": "Always",  # native sidecar
+                                    "env": s3_env,
+                                    "volumeMounts": [
+                                        {
+                                            "name": "fuse-device",
+                                            "mountPath": "/dev/fuse",
+                                        },
+                                        {
+                                            "name": "s3-mounts",
+                                            "mountPath": "/s3-data",
+                                            "mountPropagation": "Bidirectional",
+                                        },
+                                    ],
+                                    "securityContext": {
+                                        "runAsUser": 0,
+                                        "runAsNonRoot": False,
+                                        "allowPrivilegeEscalation": True,
+                                        "capabilities": {"add": ["SYS_ADMIN"]},
+                                        "privileged": True,
+                                    },
+                                    "imagePullPolicy": "IfNotPresent",
+                                    "startupProbe": {
+                                        "httpGet": {"path": "/health", "port": 5000},
+                                        "periodSeconds": 2,
+                                        "failureThreshold": 5000,  # up to 120s for slow S3 mounts
+                                    },
+                                },
+                            ]
+                            if REANA_DATASTORE_ENABLED and datastore_enabled
+                            else []
+                        ),
                         "volumes": [
                             *(
                                 [
